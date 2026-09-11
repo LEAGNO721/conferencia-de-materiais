@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Conferência de Materiais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#15171a;
+    --panel:#1e2126;
+    --panel-2:#262a30;
+    --border:#343a41;
+    --accent:#ffb020;
+    --accent-ink:#1a1200;
+    --ok:#35c46b;
+    --danger:#e5484d;
+    --text:#f2f0ea;
+    --muted:#8b9199;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--accent);color:var(--accent-ink);}
+
+  .app{max-width:900px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid var(--border);
+    position:sticky;top:0;background:rgba(21,23,26,.92);backdrop-filter:blur(6px);z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:8px;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Archivo Black',sans-serif;color:var(--accent-ink);font-size:16px;
+    transform:rotate(-3deg);
+  }
+  .brand-text{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.02em;}
+  .brand-sub{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:-2px;}
+  .nav-btn{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .nav-btn:active{transform:scale(.97);}
+
+  main{flex:1;padding:22px 20px 100px;}
+
+  .view{display:none;animation:fade .18s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  h1.page-title{font-family:'Archivo Black',sans-serif;font-size:22px;margin:0 0 4px;}
+  p.page-sub{color:var(--muted);font-size:14px;margin:0 0 22px;}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    border:none;border-radius:12px;font-weight:700;font-size:15px;
+    padding:16px 20px;cursor:pointer;font-family:'Inter',sans-serif;
+    min-height:56px;width:100%;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn-primary{background:var(--accent);color:var(--accent-ink);}
+  .btn-secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  .btn-danger{background:rgba(229,72,77,.12);color:var(--danger);border:1px solid rgba(229,72,77,.4);}
+  .btn-row{display:flex;gap:10px;}
+  .btn-row .btn{flex:1;}
+
+  /* ---------- Cards / lists ---------- */
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;margin-bottom:14px;
+  }
+  .pedido-row{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:12px;cursor:pointer;
+  }
+  .pedido-row:active{background:var(--panel-2);}
+  .pedido-num{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px;}
+  .pedido-meta{color:var(--muted);font-size:12.5px;margin-top:3px;}
+  .chevron{color:var(--muted);font-size:20px;}
+  .empty{
+    text-align:center;color:var(--muted);padding:50px 20px;border:1px dashed var(--border);
+    border-radius:var(--radius);font-size:14px;
+  }
+
+  /* ---------- Form ---------- */
+  label.field-label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;}
+  input[type=text], input[type=number]{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);font-size:16px;padding:14px;font-family:'IBM Plex Mono',monospace;
+  }
+  input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .field{margin-bottom:16px;}
+
+  .item-edit-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;margin-bottom:12px;position:relative;
+  }
+  .item-edit-top{display:flex;gap:12px;}
+  .thumb-upload{
+    width:84px;height:84px;border-radius:10px;background:var(--panel-2);border:1px dashed var(--border);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;cursor:pointer;color:var(--muted);font-size:11px;text-align:center;
+  }
+  .thumb-upload img{width:100%;height:100%;object-fit:cover;}
+  .item-edit-fields{flex:1;display:flex;flex-direction:column;gap:8px;}
+  .item-edit-fields .two-col{display:flex;gap:8px;}
+  .remove-item{
+    position:absolute;top:10px;right:10px;background:transparent;border:none;color:var(--danger);
+    font-size:13px;font-weight:700;cursor:pointer;
+  }
+
+  /* ---------- Conferência: rail ---------- */
+  .rail{display:flex;gap:6px;padding:4px 0 20px;overflow-x:auto;}
+  .rail-dot{
+    flex-shrink:0;width:30px;height:6px;border-radius:4px;background:var(--border);
+  }
+  .rail-dot.done{background:var(--ok);}
+  .rail-dot.now{background:var(--accent);}
+
+  .item-position{font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:13px;margin-bottom:10px;}
+
+  .photo-frame{
+    width:100%;aspect-ratio:1/1;max-height:46vh;border-radius:var(--radius);
+    background:var(--panel);border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:18px;
+  }
+  .photo-frame img{width:100%;height:100%;object-fit:contain;}
+  .photo-frame.no-photo{color:var(--muted);font-size:14px;flex-direction:column;gap:8px;}
+
+  .code-block{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:14px;
+  }
+  .code-value{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;letter-spacing:.01em;}
+  .code-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+
+  .qty-block{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;margin-bottom:18px;
+  }
+  .qty-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+  .qty-expected{font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:14px;}
+  .stepper{display:flex;align-items:center;gap:16px;justify-content:center;}
+  .step-btn{
+    width:56px;height:56px;border-radius:12px;background:var(--panel-2);border:1px solid var(--border);
+    color:var(--text);font-size:26px;font-weight:700;cursor:pointer;
+  }
+  .step-btn:active{transform:scale(.95);}
+  .step-value{font-family:'IBM Plex Mono',monospace;font-size:38px;font-weight:700;min-width:70px;text-align:center;}
+  .quick-match{
+    margin-top:14px;width:100%;background:transparent;border:1px dashed var(--border);color:var(--accent);
+    border-radius:10px;padding:12px;font-weight:700;font-size:13px;cursor:pointer;
+  }
+
+  .status-pill{
+    display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.04em;
+  }
+  .status-ok{background:rgba(53,196,107,.15);color:var(--ok);}
+  .status-falta{background:rgba(229,72,77,.15);color:var(--danger);}
+  .status-pendente{background:rgba(139,145,153,.15);color:var(--muted);}
+
+  .resumo-row{
+    display:flex;align-items:center;gap:12px;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:12px 14px;margin-bottom:10px;
+  }
+  .resumo-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--panel-2);flex-shrink:0;}
+  .resumo-code{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:14px;}
+  .resumo-qty{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  .summary-header{
+    display:flex;gap:10px;margin-bottom:18px;
+  }
+  .summary-stat{
+    flex:1;background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:14px;text-align:center;
+  }
+  .summary-stat .num{font-family:'Archivo Black',sans-serif;font-size:24px;}
+  .summary-stat .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+
+  .bottom-bar{
+    position:fixed;left:0;right:0;bottom:0;
+    background:rgba(21,23,26,.95);backdrop-filter:blur(8px);
+    border-top:1px solid var(--border);padding:14px 20px;
+    display:flex;justify-content:center;z-index:20;
+  }
+  .bottom-bar-inner{max-width:900px;width:100%;display:flex;gap:10px;}
+
+  .toast{
+    position:fixed;top:70px;left:50%;transform:translateX(-50%);
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:50;
+    display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+  }
+  .toast.ok{border-color:var(--ok);color:var(--ok);}
+
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">C</div>
+      <div>
+        <div class="brand-text">Conferência</div>
+        <div class="brand-sub">de materiais</div>
+      </div>
+    </div>
+    <button class="nav-btn" onclick="showView('lista')">Pedidos</button>
+  </div>
+
+  <main>
+
+    <!-- LISTA DE PEDIDOS -->
+    <div class="view" id="view-lista">
+      <h1 class="page-title">Pedidos cadastrados</h1>
+      <p class="page-sub">Toque em um pedido para conferir ou editar os itens.</p>
+      <div id="storage-notice"></div>
+      <div class="btn-row" style="margin-bottom:16px">
+        <button class="btn btn-ghost" onclick="exportarBackup()">⬇ Exportar dados</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('import-file-input').click()">⬆ Importar dados</button>
+        <input type="file" accept="application/json" id="import-file-input" onchange="importarBackup(event)">
+      </div>
+      <div id="pedidos-list"></div>
+    </div>
+
+    <!-- CADASTRO / EDIÇÃO DE PEDIDO -->
+    <div class="view" id="view-cadastro">
+      <h1 class="page-title" id="cadastro-title">Novo pedido</h1>
+      <p class="page-sub">Informe o número do pedido e adicione cada peça com código, foto e quantidade.</p>
+
+      <div class="field">
+        <label class="field-label">Número do pedido</label>
+        <input type="text" id="input-pedido-numero" placeholder="Ex: 10432">
+      </div>
+
+      <label class="field-label">Itens do pedido</label>
+      <div id="itens-edit-list"></div>
+      <button class="btn btn-secondary" style="margin-bottom:20px" onclick="addItemRow()">+ Adicionar item</button>
+
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="confirmDeletePedido()" id="btn-delete-pedido" style="display:none">Excluir pedido</button>
+        <button class="btn btn-primary" onclick="salvarPedido()">Salvar pedido</button>
+      </div>
+    </div>
+
+    <!-- INÍCIO DA CONFERÊNCIA -->
+    <div class="view" id="view-conf-inicio">
+      <h1 class="page-title">Conferência</h1>
+      <p class="page-sub">Digite o número do pedido para conferir todas as peças em sequência.</p>
+      <div class="field">
+        <label class="field-label">Número do pedido</label>
+        <input type="text" id="input-conf-numero" placeholder="Ex: 10432">
+      </div>
+      <button class="btn btn-primary" onclick="iniciarConferencia()">Iniciar conferência</button>
+    </div>
+
+    <!-- ITEM DA CONFERÊNCIA -->
+    <div class="view" id="view-conf-item">
+      <div class="rail" id="conf-rail"></div>
+      <div class="item-position" id="conf-position"></div>
+
+      <div class="photo-frame" id="conf-photo-frame"></div>
+
+      <div class="code-block">
+        <div>
+          <div class="code-label">Código</div>
+          <div class="code-value" id="conf-codigo"></div>
+        </div>
+        <span class="status-pill" id="conf-status-pill"></span>
+      </div>
+
+      <div class="qty-block">
+        <div class="qty-top">
+          <span class="field-label" style="margin:0">Quantidade conferida</span>
+          <span class="qty-expected" id="conf-qty-expected"></span>
+        </div>
+        <div class="stepper">
+          <button class="step-btn" onclick="stepQty(-1)">–</button>
+          <div class="step-value" id="conf-qty-value">0</div>
+          <button class="step-btn" onclick="stepQty(1)">+</button>
+        </div>
+        <button class="quick-match" onclick="matchQty()">Bateu com o esperado ✓</button>
+      </div>
+    </div>
+
+    <!-- RESUMO DA CONFERÊNCIA -->
+    <div class="view" id="view-conf-resumo">
+      <h1 class="page-title">Resumo da conferência</h1>
+      <p class="page-sub" id="resumo-sub"></p>
+      <div class="summary-header" id="resumo-stats"></div>
+      <div id="resumo-list"></div>
+    </div>
+
+  </main>
+
+  <div class="bottom-bar" id="bottom-bar" style="display:none">
+    <div class="bottom-bar-inner" id="bottom-bar-inner"></div>
+  </div>
+</div>
+
+<script>
+/* ---------------- Storage helpers (shared across the tablet) ---------------- */
+const LOCAL_NS = 'confmat_v1_';
+function storageAvailable(){
+  return typeof window.storage !== 'undefined' && window.storage !== null;
+}
+function localStorageAvailable(){
+  try{
+    const testKey = LOCAL_NS+'__test__';
+    localStorage.setItem(testKey, '1');
+    localStorage.removeItem(testKey);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function stGet(key){
+  if(storageAvailable()){
+    try{ const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : null; }
+    catch(e){ return null; }
+  }
+  try{
+    const raw = localStorage.getItem(LOCAL_NS+key);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+async function stSet(key, value){
+  if(storageAvailable()){
+    try{
+      const r = await window.storage.set(key, JSON.stringify(value), true);
+      if(!r) return {success:false, error:'O armazenamento não confirmou a gravação.'};
+      return {success:true};
+    }catch(e){
+      console.error('storage set falhou', e);
+      return {success:false, error: (e && e.message) ? e.message : String(e)};
+    }
+  }
+  if(!localStorageAvailable()){
+    return {success:false, error:'Este navegador está bloqueando o armazenamento local (modo privado/anônimo?). Tente em uma aba normal.'};
+  }
+  try{
+    localStorage.setItem(LOCAL_NS+key, JSON.stringify(value));
+    return {success:true};
+  }catch(e){
+    const msg = (e && e.name === 'QuotaExceededError')
+      ? 'O armazenamento do navegador está cheio. Tente fotos menores ou remova pedidos antigos.'
+      : ((e && e.message) ? e.message : String(e));
+    return {success:false, error: msg};
+  }
+}
+async function stDelete(key){
+  if(storageAvailable()){
+    try{ return await window.storage.delete(key, true); }
+    catch(e){ return null; }
+  }
+  try{ localStorage.removeItem(LOCAL_NS+key); return {deleted:true}; }
+  catch(e){ return null; }
+}
+async function stListPrefix(prefix){
+  if(storageAvailable()){
+    try{ const r = await window.storage.list(prefix, true); return r ? r.keys : []; }
+    catch(e){ return []; }
+  }
+  try{
+    const keys = [];
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && k.indexOf(LOCAL_NS+prefix) === 0){
+        keys.push(k.substring(LOCAL_NS.length));
+      }
+    }
+    return keys;
+  }catch(e){ return []; }
+}
+function normalizeNumero(str){
+  return (str || '').trim().replace(/["'\\/]/g, '').replace(/\s+/g, '-');
+}
+
+/* ---------------- Global state ---------------- */
+let editingPedidoOriginalNumero = null; // quando editando pedido já existente
+let conf = null; // {numero, itens:[...], indice}
+
+/* ---------------- Navigation ---------------- */
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.getElementById('bottom-bar').style.display = (id==='conf-item' || id==='conf-resumo') ? 'flex' : 'none';
+  if(id==='lista') loadPedidosList();
+}
+
+function toast(msg, ok){
+  const t = document.createElement('div');
+  t.className = 'toast' + (ok?' ok':'');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), ok ? 2200 : 4500);
+}
+
+/* ---------------- Home / lista de pedidos ---------------- */
+async function loadPedidosList(){
+  const noticeEl = document.getElementById('storage-notice');
+  if(!storageAvailable()){
+    noticeEl.innerHTML = `<div class="card" style="border-color:var(--accent);font-size:12.5px;color:var(--muted)">
+      📱 Os pedidos ficam salvos <strong style="color:var(--text)">neste tablet/navegador</strong>, não em nuvem.
+      Se usar em mais de um tablet, cadastre os pedidos em cada um, ou mantenha sempre o mesmo aparelho para cadastro e conferência.
+    </div>`;
+  } else {
+    noticeEl.innerHTML = '';
+  }
+  const el = document.getElementById('pedidos-list');
+  el.innerHTML = '<div class="empty">Carregando…</div>';
+  const keys = await stListPrefix('pedido:');
+  if(!keys.length){
+    el.innerHTML = '<div class="empty">Nenhum pedido cadastrado ainda.<br>Toque em "Novo pedido" para começar.</div>' + newPedidoBtn();
+    return;
+  }
+  let html = '';
+  const pedidos = [];
+  for(const k of keys){
+    const numero = k.replace('pedido:','');
+    const data = await stGet(k);
+    if(data) pedidos.push({numero, data});
+  }
+  pedidos.sort((a,b)=> a.numero.localeCompare(b.numero, undefined, {numeric:true}));
+  for(const p of pedidos){
+    const totalItens = p.data.itens.length;
+    html += `<div class="pedido-row" onclick="abrirPedidoMenu('${p.numero}')">
+      <div>
+        <div class="pedido-num">Pedido ${escapeHtml(p.numero)}</div>
+        <div class="pedido-meta">${totalItens} item${totalItens===1?'':'s'}</div>
+      </div>
+      <div class="chevron">›</div>
+    </div>`;
+  }
+  el.innerHTML = html + newPedidoBtn();
+}
+function newPedidoBtn(){
+  return `<button class="btn btn-secondary" style="margin-top:8px" onclick="novoPedido()">+ Novo pedido</button>`;
+}
+
+async function abrirPedidoMenu(numero){
+  // decide: ir para conferência direto (fluxo mais comum) e deixar opção editar no topo da conferência
+  document.getElementById('input-conf-numero').value = numero;
+  showView('conf-inicio');
+  toast('Pedido selecionado — toque em "Iniciar conferência"');
+}
+
+function novoPedido(){
+  editingPedidoOriginalNumero = null;
+  document.getElementById('cadastro-title').textContent = 'Novo pedido';
+  document.getElementById('input-pedido-numero').value = '';
+  document.getElementById('itens-edit-list').innerHTML = '';
+  document.getElementById('btn-delete-pedido').style.display = 'none';
+  addItemRow();
+  showView('cadastro');
+}
+
+async function editarPedidoExistente(numero){
+  editingPedidoOriginalNumero = numero;
+  const data = await stGet('pedido:'+numero);
+  document.getElementById('cadastro-title').textContent = 'Editar pedido';
+  document.getElementById('input-pedido-numero').value = numero;
+  document.getElementById('itens-edit-list').innerHTML = '';
+  document.getElementById('btn-delete-pedido').style.display = 'block';
+  if(data && data.itens.length){
+    data.itens.forEach(it => addItemRow(it));
+  } else {
+    addItemRow();
+  }
+  showView('cadastro');
+}
+
+/* ---------------- Cadastro de itens ---------------- */
+let itemRowSeq = 0;
+function addItemRow(existing){
+  itemRowSeq++;
+  const rowId = 'itemrow_'+itemRowSeq;
+  const codigo = existing ? existing.codigo : '';
+  const quantidade = existing ? existing.quantidade : 1;
+  const foto = existing ? (existing.foto || '') : '';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'item-edit-card';
+  wrapper.id = rowId;
+  wrapper.innerHTML = `
+    <button class="remove-item" onclick="document.getElementById('${rowId}').remove()">Remover</button>
+    <div class="item-edit-top">
+      <div class="thumb-upload" onclick="document.getElementById('${rowId}_file').click()">
+        ${foto ? `<img src="${foto}">` : 'Foto'}
+      </div>
+      <div class="item-edit-fields">
+        <input type="text" placeholder="Código do material" class="it-codigo" value="${escapeHtml(codigo)}">
+        <div class="two-col">
+          <input type="number" min="0" placeholder="Quantidade" class="it-qtd" value="${quantidade}">
+        </div>
+      </div>
+    </div>
+    <input type="file" accept="image/*" id="${rowId}_file" onchange="handlePhotoUpload(event,'${rowId}')">
+  `;
+  document.getElementById('itens-edit-list').appendChild(wrapper);
+}
+
+function handlePhotoUpload(evt, rowId){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = function(e){
+    img.onload = function(){
+      const maxW = 700;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+      const thumbDiv = document.querySelector('#'+rowId+' .thumb-upload');
+      thumbDiv.innerHTML = `<img src="${dataUrl}">`;
+      thumbDiv.dataset.foto = dataUrl;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function salvarPedido(){
+  const numeroBruto = document.getElementById('input-pedido-numero').value;
+  const numero = normalizeNumero(numeroBruto);
+  if(!numero){ toast('Informe o número do pedido'); return; }
+  if(numero.length > 150){ toast('Número do pedido muito longo'); return; }
+
+  const rows = document.querySelectorAll('#itens-edit-list .item-edit-card');
+  if(!rows.length){ toast('Adicione ao menos um item'); return; }
+
+  const itens = [];
+  for(const row of rows){
+    const codigo = row.querySelector('.it-codigo').value.trim();
+    const quantidade = parseInt(row.querySelector('.it-qtd').value || '0', 10);
+    const thumbDiv = row.querySelector('.thumb-upload');
+    const img = thumbDiv.querySelector('img');
+    const foto = thumbDiv.dataset.foto || (img ? img.src : '');
+    if(!codigo){ toast('Todos os itens precisam de um código'); return; }
+    itens.push({codigo, quantidade: quantidade || 0, foto});
+  }
+
+  // se o número mudou durante edição, remove o registro antigo
+  if(editingPedidoOriginalNumero && editingPedidoOriginalNumero !== numero){
+    await stDelete('pedido:'+editingPedidoOriginalNumero);
+  }
+
+  const result = await stSet('pedido:'+numero, {itens});
+  if(result && result.success){
+    toast('Pedido '+numero+' salvo com sucesso', true);
+    showView('lista');
+  } else {
+    const motivo = (result && result.error) ? result.error : 'motivo desconhecido';
+    toast('Não foi possível salvar: ' + motivo);
+    console.error('Falha ao salvar pedido', motivo);
+  }
+}
+
+function confirmDeletePedido(){
+  if(!editingPedidoOriginalNumero) return;
+  if(confirm('Excluir o pedido '+editingPedidoOriginalNumero+'? Essa ação não pode ser desfeita.')){
+    stDelete('pedido:'+editingPedidoOriginalNumero).then(()=>{
+      toast('Pedido excluído', true);
+      showView('lista');
+    });
+  }
+}
+
+/* ---------------- Conferência ---------------- */
+async function iniciarConferencia(){
+  const numero = normalizeNumero(document.getElementById('input-conf-numero').value);
+  if(!numero){ toast('Informe o número do pedido'); return; }
+  const data = await stGet('pedido:'+numero);
+  if(!data || !data.itens.length){
+    toast('Pedido não encontrado. Cadastre-o primeiro.');
+    return;
+  }
+  conf = {
+    numero,
+    indice: 0,
+    itens: data.itens.map(it => ({...it, conferido: 0}))
+  };
+  renderConfItem();
+  showView('conf-item');
+}
+
+function renderConfRail(){
+  const rail = document.getElementById('conf-rail');
+  rail.innerHTML = conf.itens.map((it, i) => {
+    let cls = 'rail-dot';
+    if(i === conf.indice) cls += ' now';
+    else if(it.conferido > 0) cls += ' done';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+}
+
+function renderConfItem(){
+  const it = conf.itens[conf.indice];
+  renderConfRail();
+  document.getElementById('conf-position').textContent = `Item ${conf.indice+1} de ${conf.itens.length}`;
+
+  const frame = document.getElementById('conf-photo-frame');
+  if(it.foto){
+    frame.classList.remove('no-photo');
+    frame.innerHTML = `<img src="${it.foto}">`;
+  } else {
+    frame.classList.add('no-photo');
+    frame.innerHTML = `<div>📦</div><div>Sem foto cadastrada</div>`;
+  }
+
+  document.getElementById('conf-codigo').textContent = it.codigo;
+  document.getElementById('conf-qty-expected').textContent = `esperado: ${it.quantidade}`;
+  document.getElementById('conf-qty-value').textContent = it.conferido;
+  updateStatusPill(it);
+  renderBottomBar();
+}
+
+function updateStatusPill(it){
+  const pill = document.getElementById('conf-status-pill');
+  if(it.conferido === it.quantidade && it.quantidade > 0){
+    pill.className = 'status-pill status-ok'; pill.textContent = 'OK';
+  } else if(it.conferido === 0){
+    pill.className = 'status-pill status-pendente'; pill.textContent = 'Pendente';
+  } else {
+    pill.className = 'status-pill status-falta'; pill.textContent = 'Divergente';
+  }
+}
+
+function stepQty(delta){
+  const it = conf.itens[conf.indice];
+  it.conferido = Math.max(0, it.conferido + delta);
+  document.getElementById('conf-qty-value').textContent = it.conferido;
+  updateStatusPill(it);
+  renderConfRail();
+}
+
+function matchQty(){
+  const it = conf.itens[conf.indice];
+  it.conferido = it.quantidade;
+  document.getElementById('conf-qty-value').textContent = it.conferido;
+  updateStatusPill(it);
+  renderConfRail();
+}
+
+function renderBottomBar(){
+  const inner = document.getElementById('bottom-bar-inner');
+  const isFirst = conf.indice === 0;
+  const isLast = conf.indice === conf.itens.length - 1;
+  inner.innerHTML = `
+    ${!isFirst ? `<button class="btn btn-secondary" onclick="confAnterior()">‹ Anterior</button>` : ''}
+    <button class="btn btn-primary" onclick="${isLast ? 'finalizarParaResumo()' : 'confProximo()'}">
+      ${isLast ? 'Ver resumo' : 'Confirmar e avançar ›'}
+    </button>
+  `;
+}
+
+function confProximo(){
+  if(conf.indice < conf.itens.length - 1){
+    conf.indice++;
+    renderConfItem();
+  }
+}
+function confAnterior(){
+  if(conf.indice > 0){
+    conf.indice--;
+    renderConfItem();
+  }
+}
+
+async function finalizarParaResumo(){
+  const total = conf.itens.length;
+  const ok = conf.itens.filter(it => it.conferido === it.quantidade && it.quantidade > 0).length;
+  const divergentes = conf.itens.filter(it => it.conferido !== it.quantidade).length;
+
+  document.getElementById('resumo-sub').textContent = `Pedido ${conf.numero} — conferência concluída`;
+  document.getElementById('resumo-stats').innerHTML = `
+    <div class="summary-stat"><div class="num">${total}</div><div class="lbl">Itens</div></div>
+    <div class="summary-stat" style="border-color:var(--ok)"><div class="num" style="color:var(--ok)">${ok}</div><div class="lbl">OK</div></div>
+    <div class="summary-stat" style="border-color:${divergentes? 'var(--danger)':'var(--border)'}"><div class="num" style="color:${divergentes?'var(--danger)':'var(--text)'}">${divergentes}</div><div class="lbl">Divergentes</div></div>
+  `;
+
+  const listEl = document.getElementById('resumo-list');
+  listEl.innerHTML = conf.itens.map(it => {
+    const okItem = it.conferido === it.quantidade && it.quantidade > 0;
+    const pillClass = okItem ? 'status-ok' : (it.conferido===0 ? 'status-falta' : 'status-falta');
+    const pillText = okItem ? 'OK' : (it.conferido===0 ? 'Faltando' : 'Divergente');
+    return `<div class="resumo-row">
+      ${it.foto ? `<img class="resumo-thumb" src="${it.foto}">` : `<div class="resumo-thumb"></div>`}
+      <div style="flex:1">
+        <div class="resumo-code">${escapeHtml(it.codigo)}</div>
+        <div class="resumo-qty">conferido ${it.conferido} de ${it.quantidade}</div>
+      </div>
+      <span class="status-pill ${pillClass}">${pillText}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('bottom-bar-inner').innerHTML = `
+    <button class="btn btn-secondary" onclick="showView('conf-item')">‹ Revisar itens</button>
+    <button class="btn btn-primary" onclick="salvarConferenciaEVoltar()">Concluir e salvar</button>
+  `;
+
+  showView('conf-resumo');
+
+  // salva um registro histórico simples da conferência
+  await stSet('conferencia:'+conf.numero+':'+Date.now(), {
+    numero: conf.numero,
+    data: new Date().toISOString(),
+    itens: conf.itens.map(it=>({codigo:it.codigo, esperado:it.quantidade, conferido:it.conferido}))
+  });
+}
+
+function salvarConferenciaEVoltar(){
+  toast('Conferência registrada', true);
+  document.getElementById('input-conf-numero').value = '';
+  conf = null;
+  showView('lista');
+}
+
+/* ---------------- Backup: exportar / importar ---------------- */
+async function exportarBackup(){
+  toast('Preparando backup…');
+  const pedidoKeys = await stListPrefix('pedido:');
+  const confKeys = await stListPrefix('conferencia:');
+  const dados = { pedidos: {}, conferencias: {}, exportadoEm: new Date().toISOString() };
+
+  for(const k of pedidoKeys){
+    const v = await stGet(k);
+    if(v) dados.pedidos[k] = v;
+  }
+  for(const k of confKeys){
+    const v = await stGet(k);
+    if(v) dados.conferencias[k] = v;
+  }
+
+  const totalPedidos = Object.keys(dados.pedidos).length;
+  if(totalPedidos === 0){
+    toast('Não há pedidos cadastrados para exportar ainda.');
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(dados, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dataStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `backup-conferencia-materiais-${dataStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast(`Backup com ${totalPedidos} pedido(s) baixado`, true);
+}
+
+function importarBackup(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    let dados;
+    try{
+      dados = JSON.parse(e.target.result);
+    }catch(err){
+      toast('Arquivo inválido — não parece ser um backup deste sistema.');
+      return;
+    }
+    if(!dados.pedidos){
+      toast('Arquivo inválido — não parece ser um backup deste sistema.');
+      return;
+    }
+    const totalPedidos = Object.keys(dados.pedidos).length;
+    if(!confirm(`Importar ${totalPedidos} pedido(s) deste backup? Pedidos com o mesmo número serão substituídos.`)){
+      evt.target.value = '';
+      return;
+    }
+    toast('Importando…');
+    let ok = 0, falhas = 0;
+    for(const [key, value] of Object.entries(dados.pedidos)){
+      const r = await stSet(key, value);
+      if(r && r.success) ok++; else falhas++;
+    }
+    if(dados.conferencias){
+      for(const [key, value] of Object.entries(dados.conferencias)){
+        await stSet(key, value);
+      }
+    }
+    evt.target.value = '';
+    if(falhas === 0){
+      toast(`${ok} pedido(s) importado(s) com sucesso`, true);
+    } else {
+      toast(`${ok} importado(s), ${falhas} falharam (provavelmente por falta de espaço no navegador)`);
+    }
+    loadPedidosList();
+  };
+  reader.readAsText(file);
+}
+function escapeHtml(str){
+  return (str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ---------------- Init ---------------- */
+showView('lista');
+</script>
+</body>
+</html>
