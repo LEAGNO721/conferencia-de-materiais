@@ -318,10 +318,49 @@
 </div>
 
 <script>
-/* ---------------- Storage helpers (shared across the tablet) ---------------- */
+  window.__firebaseReadyResolve = null;
+  window.firebaseReadyPromise = new Promise(res => { window.__firebaseReadyResolve = res; });
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs }
+    from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCP0dqe57RQi6TMtYtgSq9LKH01vU2j1Ew",
+    authDomain: "conferencia-materiais-515b3.firebaseapp.com",
+    projectId: "conferencia-materiais-515b3",
+    storageBucket: "conferencia-materiais-515b3.firebasestorage.app",
+    messagingSenderId: "183993577552",
+    appId: "1:183993577552:web:de7ea096416dd895f1a155"
+  };
+
+  try{
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.__db = db;
+    window.__fs = { doc, setDoc, getDoc, deleteDoc, collection, getDocs };
+    window.__firebaseOk = true;
+  }catch(e){
+    console.error('Falha ao iniciar o Firebase', e);
+    window.__firebaseOk = false;
+  }
+  window.__firebaseReadyResolve();
+</script>
+
+<script>
+/* ---------------- Storage helpers (nuvem via Firestore, com backup local) ---------------- */
 const LOCAL_NS = 'confmat_v1_';
-function storageAvailable(){
-  return typeof window.storage !== 'undefined' && window.storage !== null;
+
+function splitKey(key){
+  const idx = key.indexOf(':');
+  return { type: key.substring(0, idx), rest: key.substring(idx+1) };
+}
+function collectionForType(type){
+  return type === 'pedido' ? 'pedidos' : 'conferencias';
+}
+function safeDocId(rest){
+  return rest.replace(/[\/\.\#\$\[\]]/g, '_').replace(/^__+/, '_');
 }
 function localStorageAvailable(){
   try{
@@ -333,51 +372,83 @@ function localStorageAvailable(){
 }
 
 async function stGet(key){
-  if(storageAvailable()){
-    try{ const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : null; }
-    catch(e){ return null; }
+  await window.firebaseReadyPromise;
+  if(window.__firebaseOk){
+    try{
+      const {type, rest} = splitKey(key);
+      const ref = window.__fs.doc(window.__db, collectionForType(type), safeDocId(rest));
+      const snap = await window.__fs.getDoc(ref);
+      if(snap.exists()){
+        const d = snap.data();
+        return (d && d.data !== undefined) ? d.data : null;
+      }
+      return null;
+    }catch(e){
+      console.error('Firestore get falhou, tentando backup local', e);
+    }
   }
   try{
     const raw = localStorage.getItem(LOCAL_NS+key);
     return raw ? JSON.parse(raw) : null;
   }catch(e){ return null; }
 }
+
 async function stSet(key, value){
-  if(storageAvailable()){
+  await window.firebaseReadyPromise;
+  if(window.__firebaseOk){
     try{
-      const r = await window.storage.set(key, JSON.stringify(value), true);
-      if(!r) return {success:false, error:'O armazenamento não confirmou a gravação.'};
+      const {type, rest} = splitKey(key);
+      const ref = window.__fs.doc(window.__db, collectionForType(type), safeDocId(rest));
+      await window.__fs.setDoc(ref, {data: value, atualizadoEm: new Date().toISOString()});
+      try{ localStorage.setItem(LOCAL_NS+key, JSON.stringify(value)); }catch(_){}
       return {success:true};
     }catch(e){
-      console.error('storage set falhou', e);
-      return {success:false, error: (e && e.message) ? e.message : String(e)};
+      console.error('Firestore set falhou', e);
+      let salvouLocal = false;
+      try{ localStorage.setItem(LOCAL_NS+key, JSON.stringify(value)); salvouLocal = true; }catch(_){}
+      const motivo = (e && e.message) ? e.message : String(e);
+      return {success:false, error: salvouLocal
+        ? `Não salvou na nuvem (${motivo}) — foi salvo só neste aparelho como backup.`
+        : `Não foi possível salvar: ${motivo}`};
     }
   }
   if(!localStorageAvailable()){
-    return {success:false, error:'Este navegador está bloqueando o armazenamento local (modo privado/anônimo?). Tente em uma aba normal.'};
+    return {success:false, error:'Sem conexão com a nuvem e o armazenamento local deste navegador está bloqueado.'};
   }
   try{
     localStorage.setItem(LOCAL_NS+key, JSON.stringify(value));
     return {success:true};
   }catch(e){
-    const msg = (e && e.name === 'QuotaExceededError')
-      ? 'O armazenamento do navegador está cheio. Tente fotos menores ou remova pedidos antigos.'
-      : ((e && e.message) ? e.message : String(e));
-    return {success:false, error: msg};
+    return {success:false, error: (e && e.message) ? e.message : String(e)};
   }
 }
+
 async function stDelete(key){
-  if(storageAvailable()){
-    try{ return await window.storage.delete(key, true); }
-    catch(e){ return null; }
+  await window.firebaseReadyPromise;
+  if(window.__firebaseOk){
+    try{
+      const {type, rest} = splitKey(key);
+      const ref = window.__fs.doc(window.__db, collectionForType(type), safeDocId(rest));
+      await window.__fs.deleteDoc(ref);
+    }catch(e){ console.error('Firestore delete falhou', e); }
   }
-  try{ localStorage.removeItem(LOCAL_NS+key); return {deleted:true}; }
-  catch(e){ return null; }
+  try{ localStorage.removeItem(LOCAL_NS+key); }catch(e){}
+  return {deleted:true};
 }
+
 async function stListPrefix(prefix){
-  if(storageAvailable()){
-    try{ const r = await window.storage.list(prefix, true); return r ? r.keys : []; }
-    catch(e){ return []; }
+  await window.firebaseReadyPromise;
+  const type = prefix.replace(':', '');
+  if(window.__firebaseOk){
+    try{
+      const colRef = window.__fs.collection(window.__db, collectionForType(type));
+      const snap = await window.__fs.getDocs(colRef);
+      const keys = [];
+      snap.forEach(docSnap => keys.push(type+':'+docSnap.id));
+      return keys;
+    }catch(e){
+      console.error('Firestore list falhou, tentando backup local', e);
+    }
   }
   try{
     const keys = [];
@@ -417,13 +488,15 @@ function toast(msg, ok){
 /* ---------------- Home / lista de pedidos ---------------- */
 async function loadPedidosList(){
   const noticeEl = document.getElementById('storage-notice');
-  if(!storageAvailable()){
-    noticeEl.innerHTML = `<div class="card" style="border-color:var(--accent);font-size:12.5px;color:var(--muted)">
-      📱 Os pedidos ficam salvos <strong style="color:var(--text)">neste tablet/navegador</strong>, não em nuvem.
-      Se usar em mais de um tablet, cadastre os pedidos em cada um, ou mantenha sempre o mesmo aparelho para cadastro e conferência.
+  await window.firebaseReadyPromise;
+  if(!window.__firebaseOk){
+    noticeEl.innerHTML = `<div class="card" style="border-color:var(--danger);font-size:12.5px;color:var(--muted)">
+      ⚠️ Sem conexão com a nuvem agora. Os pedidos estão sendo salvos <strong style="color:var(--text)">só neste aparelho</strong> como backup até a conexão voltar.
     </div>`;
   } else {
-    noticeEl.innerHTML = '';
+    noticeEl.innerHTML = `<div class="card" style="border-color:var(--ok);font-size:12.5px;color:var(--muted)">
+      ☁️ Conectado à nuvem — os pedidos ficam disponíveis em qualquer aparelho.
+    </div>`;
   }
   const el = document.getElementById('pedidos-list');
   el.innerHTML = '<div class="empty">Carregando…</div>';
