@@ -224,7 +224,10 @@
         <div class="brand-sub">de materiais</div>
       </div>
     </div>
-    <button class="nav-btn" onclick="showView('lista')">Pedidos</button>
+    <div style="display:flex;gap:8px">
+      <button class="nav-btn" id="editor-toggle-btn" onclick="toggleEditorMode()">🔒 Edição</button>
+      <button class="nav-btn" onclick="showView('lista')">Pedidos</button>
+    </div>
   </div>
 
   <main>
@@ -240,6 +243,20 @@
         <input type="file" accept="application/json" id="import-file-input" onchange="importarBackup(event)">
       </div>
       <div id="pedidos-list"></div>
+    </div>
+
+    <!-- SENHA DE EDIÇÃO -->
+    <div class="view" id="view-login">
+      <h1 class="page-title">Acesso de edição</h1>
+      <p class="page-sub">Digite a senha de edição para criar, editar ou excluir pedidos. Conferir pedidos não exige senha.</p>
+      <div class="field">
+        <label class="field-label">Senha de edição</label>
+        <input type="password" id="input-editor-senha" placeholder="••••••••">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="pendingEditorAction=null; showView('lista')">Cancelar</button>
+        <button class="btn btn-primary" onclick="tentarLoginEditor()">Entrar</button>
+      </div>
     </div>
 
     <!-- CADASTRO / EDIÇÃO DE PEDIDO -->
@@ -325,6 +342,8 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
   import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, getDocs }
     from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCP0dqe57RQi6TMtYtgSq9LKH01vU2j1Ew",
@@ -338,9 +357,15 @@
   try{
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
     window.__db = db;
     window.__fs = { doc, setDoc, getDoc, deleteDoc, collection, getDocs };
+    window.__auth = auth;
+    window.__authFns = { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut };
     window.__firebaseOk = true;
+    onAuthStateChanged(auth, () => {
+      if(typeof window.updateEditorUI === 'function') window.updateEditorUI();
+    });
   }catch(e){
     console.error('Falha ao iniciar o Firebase', e);
     window.__firebaseOk = false;
@@ -469,6 +494,80 @@ function normalizeNumero(str){
 let editingPedidoOriginalNumero = null; // quando editando pedido já existente
 let conf = null; // {numero, itens:[...], indice}
 
+/* ---------------- Autenticação do editor ---------------- */
+const EDITOR_EMAIL = 'editor@conferencia-materiais.app';
+let pendingEditorAction = null;
+
+function isEditorLoggedIn(){
+  return !!(window.__auth && window.__auth.currentUser);
+}
+
+function updateEditorUI(){
+  const btn = document.getElementById('editor-toggle-btn');
+  if(!btn) return;
+  btn.textContent = isEditorLoggedIn() ? '🔓 Edição' : '🔒 Edição';
+}
+
+function requireEditorAuth(action){
+  if(isEditorLoggedIn()){
+    action();
+  } else {
+    pendingEditorAction = action;
+    document.getElementById('input-editor-senha').value = '';
+    showView('login');
+  }
+}
+
+function toggleEditorMode(){
+  if(isEditorLoggedIn()){
+    window.__authFns.signOut(window.__auth).then(()=>{
+      updateEditorUI();
+      toast('Modo de edição desativado');
+    });
+  } else {
+    pendingEditorAction = null;
+    document.getElementById('input-editor-senha').value = '';
+    showView('login');
+  }
+}
+
+async function tentarLoginEditor(){
+  const senha = document.getElementById('input-editor-senha').value;
+  if(!senha){ toast('Digite a senha de edição'); return; }
+  await window.firebaseReadyPromise;
+  if(!window.__firebaseOk || !window.__auth){
+    toast('Sem conexão com a nuvem agora. Tente novamente em instantes.');
+    return;
+  }
+  try{
+    await window.__authFns.signInWithEmailAndPassword(window.__auth, EDITOR_EMAIL, senha);
+    onLoginSuccess();
+  }catch(err){
+    const code = err && err.code;
+    if(code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials'){
+      // primeira vez que alguém usa o modo de edição: cria a conta com a senha combinada
+      try{
+        await window.__authFns.createUserWithEmailAndPassword(window.__auth, EDITOR_EMAIL, senha);
+        onLoginSuccess();
+      }catch(err2){
+        toast('Não foi possível entrar: ' + (err2.message || err2.code || 'erro desconhecido'));
+      }
+    } else if(code === 'auth/wrong-password'){
+      toast('Senha incorreta');
+    } else {
+      toast('Não foi possível entrar: ' + (err.message || code || 'erro desconhecido'));
+    }
+  }
+}
+
+function onLoginSuccess(){
+  toast('Modo de edição ativado', true);
+  updateEditorUI();
+  const cb = pendingEditorAction;
+  pendingEditorAction = null;
+  if(cb){ cb(); } else { showView('lista'); }
+}
+
 /* ---------------- Navigation ---------------- */
 function showView(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -515,18 +614,19 @@ async function loadPedidosList(){
   pedidos.sort((a,b)=> a.numero.localeCompare(b.numero, undefined, {numeric:true}));
   for(const p of pedidos){
     const totalItens = p.data.itens.length;
-    html += `<div class="pedido-row" onclick="abrirPedidoMenu('${p.numero}')">
-      <div>
+    html += `<div class="pedido-row">
+      <div style="flex:1;cursor:pointer" onclick="abrirPedidoMenu('${p.numero}')">
         <div class="pedido-num">Pedido ${escapeHtml(p.numero)}</div>
         <div class="pedido-meta">${totalItens} item${totalItens===1?'':'s'}</div>
       </div>
-      <div class="chevron">›</div>
+      <button class="nav-btn" style="padding:10px 12px" onclick="event.stopPropagation(); requireEditorAuth(function(){editarPedidoExistente('${p.numero}')})">✏️</button>
+      <div class="chevron" style="cursor:pointer" onclick="abrirPedidoMenu('${p.numero}')">›</div>
     </div>`;
   }
   el.innerHTML = html + newPedidoBtn();
 }
 function newPedidoBtn(){
-  return `<button class="btn btn-secondary" style="margin-top:8px" onclick="novoPedido()">+ Novo pedido</button>`;
+  return `<button class="btn btn-secondary" style="margin-top:8px" onclick="requireEditorAuth(novoPedido)">+ Novo pedido</button>`;
 }
 
 async function abrirPedidoMenu(numero){
@@ -893,6 +993,10 @@ function escapeHtml(str){
 }
 
 /* ---------------- Init ---------------- */
+document.getElementById('input-editor-senha').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') tentarLoginEditor();
+});
+window.firebaseReadyPromise.then(updateEditorUI);
 showView('lista');
 </script>
 </body>
